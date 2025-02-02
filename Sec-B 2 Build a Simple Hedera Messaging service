@@ -1,0 +1,60 @@
+class MockMessage:
+    def __init__(self, message):
+        self.message = message
+
+# Main code to run the service
+def main():
+    # Create Hedera client
+    client = Client.for_testnet()
+    
+    # Set operator with mock account details
+    client.set_operator("YOUR_ACCOUNT_ID", "YOUR_PRIVATE_KEY")
+    
+    # Create a new topic (only done once)
+    create_topic_transaction = TopicCreateTransaction()
+    create_topic_response = create_topic_transaction.execute(client)
+    topic_id = create_topic_response.get_receipt(client).topic_id
+    print(f"Topic Created: {topic_id}")
+    
+    # Generate encryption key (you can save this key to reuse later)
+    encryption_key = generate_key()
+    
+    # Send some messages
+    send_message(client, topic_id, "Hello, Hedera!", encryption_key)
+    send_message(client, topic_id, "Learning HCS", encryption_key)
+    send_message(client, topic_id, "Message 3", encryption_key)
+    
+    # Retrieve messages
+    messages = retrieve_messages(client, topic_id, encryption_key)
+    
+    # Filter messages for the keyword 'Hedera'
+    filtered_messages = filter_messages(messages, "Hedera")
+    
+    print("\nMessages Received:")
+    for msg in filtered_messages:
+        print(msg)
+
+# Send message function
+def send_message(client, topic_id, message, encryption_key):
+    encrypted_message = encrypt_message(encryption_key, message)
+    
+    # Create and send message to the topic
+    transaction = TopicMessageSubmitTransaction().set_topic_id(topic_id).set_message(encrypted_message)
+    transaction.execute(client)
+
+# Retrieve messages function
+def retrieve_messages(client, topic_id, encryption_key):
+    messages = []
+    
+    # Query messages from the topic
+    query = TopicMessageQuery().set_topic_id(topic_id).set_start_time(0)
+    response = query.execute(client)
+    
+    for msg in response:
+        decrypted_message = decrypt_message(encryption_key, msg.message)
+        messages.append(decrypted_message)
+    
+    return messages
+
+if __name__ == "__main__":
+    main()
